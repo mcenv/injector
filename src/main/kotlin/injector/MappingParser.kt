@@ -11,7 +11,7 @@ class MappingParser private constructor() {
 
         fun parseMethodMapping(type: String, deobfuscatedName: String) {
             skip("(")
-            val descriptor = StringBuilder()
+            val descriptor = StringBuilder("(")
             while (true) {
                 val parameterType = parseDescriptor { it == ',' || it == ')' }
                 descriptor.append(parameterType)
@@ -90,13 +90,24 @@ class MappingParser private constructor() {
     }
 
     private inline fun parseDescriptor(predicate: (Char) -> Boolean): String {
-        val internalName = parseInternalName { predicate(it) || it == '[' }
+        val name = when (val name = parseWord { predicate(it) || it == '[' }) {
+            "void" -> "V"
+            "boolean" -> "Z"
+            "char" -> "C"
+            "byte" -> "B"
+            "short" -> "S"
+            "int" -> "I"
+            "float" -> "F"
+            "long" -> "J"
+            "double" -> "D"
+            else -> "L$name;"
+        }
         val descriptor = StringBuilder()
         read(predicate) {
             descriptor.append('[')
             skip("]")
         }
-        descriptor.append(internalName)
+        descriptor.append(name)
         return descriptor.toString()
     }
 
