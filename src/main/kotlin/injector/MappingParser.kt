@@ -1,6 +1,9 @@
 package injector
 
-class MappingParser private constructor() {
+import injector.Mapping.ClassMapping
+import injector.Mapping.MethodKey
+
+internal class MappingParser private constructor() {
     private lateinit var line: String
     private var cursor: Int = 0
 
