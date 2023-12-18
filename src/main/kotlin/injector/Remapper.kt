@@ -7,7 +7,7 @@ internal class Remapper(
     private val hierarchy: TypeHierarchy,
 ) : Remapper() {
     override fun mapMethodName(owner: String, name: String, descriptor: String): String {
-        return hierarchy.findSuperType(owner) { mapping.mapMethod(it, name, descriptor) } ?: name
+        return hierarchy.findSuperType(owner) { mapping.mapMethod(it, name, mapMethodDesc(descriptor)) } ?: name
     }
 
     override fun mapRecordComponentName(owner: String, name: String, descriptor: String): String {
