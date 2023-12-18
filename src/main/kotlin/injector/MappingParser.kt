@@ -47,6 +47,9 @@ internal class MappingParser private constructor() {
                             val type = parseDescriptor { it == ' ' }
                             skip(" ")
                             val deobfuscatedName = parseWord { it == ' ' || it == '(' }
+                            if (deobfuscatedName.startsWith("lambda$")) {
+                                continue
+                            }
                             parseMethodMapping(type, deobfuscatedName)
                         }
 
