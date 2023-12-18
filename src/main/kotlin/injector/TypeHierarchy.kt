@@ -3,7 +3,7 @@ package injector
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.Opcodes.ASM9
-import java.util.jar.JarFile
+import java.util.jar.JarInputStream
 
 class TypeHierarchy private constructor() {
     private val superTypes: MutableMap<String, MutableSet<String>> = hashMapOf()
@@ -24,7 +24,7 @@ class TypeHierarchy private constructor() {
     }
 
     companion object {
-        fun fromJar(jar: JarFile): TypeHierarchy {
+        fun fromJar(input: JarInputStream): TypeHierarchy {
             return TypeHierarchy().also { hierarchy ->
                 val visitor = object : ClassVisitor(ASM9) {
                     override fun visit(
@@ -40,8 +40,12 @@ class TypeHierarchy private constructor() {
                     }
                 }
 
-                jar.entries().asSequence().filter { it.name.endsWith(".class") }.forEach { entry ->
-                    jar.getInputStream(entry).use(::ClassReader).accept(visitor, ClassReader.EXPAND_FRAMES)
+                while (true) {
+                    val entry = input.nextEntry ?: break
+                    if (!entry.name.endsWith(".class")) {
+                        continue
+                    }
+                    ClassReader(input).accept(visitor, ClassReader.EXPAND_FRAMES)
                 }
             }
         }
