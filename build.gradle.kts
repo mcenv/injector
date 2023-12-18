@@ -1,29 +1,23 @@
 plugins {
-    java
-    `jacoco-report-aggregation`
+    kotlin("jvm") version "1.9.21"
+    kotlin("plugin.serialization") version "1.9.21"
 }
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
-}
+version = "0.0.0"
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
+    testImplementation(kotlin("test"))
 }
 
-testing {
-    suites {
-        val test by getting(JvmTestSuite::class) {
-            useJUnitJupiter()
-        }
-    }
+kotlin {
+    jvmToolchain(21)
 }
 
-tasks.check {
-    dependsOn(tasks.testCodeCoverageReport)
+tasks.test {
+    useJUnitPlatform()
 }
