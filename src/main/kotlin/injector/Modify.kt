@@ -6,6 +6,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.json.encodeToStream
 import org.objectweb.asm.ClassReader
+import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.commons.ClassRemapper
 import java.nio.file.Path
@@ -16,7 +17,19 @@ import java.util.zip.ZipEntry
 import kotlin.io.path.outputStream
 
 @OptIn(ExperimentalSerializationApi::class)
-fun unbundleServerJar(inputPath: Path, outputPath: Path, mapping: Mapping) {
+@Suppress("NAME_SHADOWING")
+fun modifyServerJar(
+    inputPath: Path,
+    outputPath: Path,
+    mapping: Mapping,
+    serverModName: String,
+    visitors: Map<String, (ClassVisitor) -> ClassVisitor>,
+) {
+    val visitors = HashMap(visitors).also { visitors ->
+        // TODO: don't overwrite existing visitor
+        visitors[ServerModNameModifier.CLASS] = { ServerModNameModifier(serverModName, it) }
+    }
+
     JarFile(inputPath.toFile()).use { inputJar ->
         JarOutputStream(outputPath.outputStream().buffered()).use { outputJar ->
             // TODO: check Bundler-Format in input jar
@@ -48,7 +61,8 @@ fun unbundleServerJar(inputPath: Path, outputPath: Path, mapping: Mapping) {
                             outputJar.putNextEntry(if (deobfuscatedName == obfuscatedName) entry else ZipEntry("$deobfuscatedName.class"))
 
                             val writer = ClassWriter(0)
-                            ClassReader(input).accept(ClassRemapper(writer, remapper), ClassReader.EXPAND_FRAMES)
+                            val visitor = visitors[deobfuscatedName]?.invoke(writer) ?: writer
+                            ClassReader(input).accept(ClassRemapper(visitor, remapper), ClassReader.EXPAND_FRAMES)
                             outputJar.write(writer.toByteArray())
                         }
 
