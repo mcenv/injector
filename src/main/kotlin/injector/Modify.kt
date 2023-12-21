@@ -14,6 +14,8 @@ import java.util.jar.JarFile
 import java.util.jar.JarInputStream
 import java.util.jar.JarOutputStream
 import java.util.zip.ZipEntry
+import kotlin.io.path.createDirectories
+import kotlin.io.path.div
 import kotlin.io.path.outputStream
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -21,6 +23,7 @@ import kotlin.io.path.outputStream
 fun modifyServerJar(
     inputPath: Path,
     outputPath: Path,
+    librariesPath: Path,
     mapping: Mapping,
     serverModName: String,
     visitors: Map<String, (ClassVisitor) -> ClassVisitor>,
@@ -32,7 +35,22 @@ fun modifyServerJar(
 
     JarFile(inputPath.toFile()).use { inputJar ->
         JarOutputStream(outputPath.outputStream().buffered()).use { outputJar ->
-            // TODO: check Bundler-Format in input jar
+            val bundlerFormat = inputJar.manifest.mainAttributes.getValue("Bundler-Format")
+            if (bundlerFormat != "1.0") {
+                error("Unsupported Bundler-Format: $bundlerFormat")
+            }
+
+            inputJar
+                .getInputStream(inputJar.getEntry("META-INF/libraries.list"))
+                .bufferedReader()
+                .use { it.readLines() }
+                .map { it.split("\t")[2] }
+                .forEach { path ->
+                    inputJar.getInputStream(inputJar.getEntry("META-INF/libraries/$path")).use { input ->
+                        (librariesPath / path).apply { parent.createDirectories() }.outputStream().buffered()
+                            .use(input::transferTo)
+                    }
+                }
 
             val path = inputJar
                 .getInputStream(inputJar.getEntry("META-INF/versions.list"))
