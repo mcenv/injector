@@ -10,6 +10,7 @@ import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.commons.ClassRemapper
 import java.io.ByteArrayOutputStream
+import java.io.OutputStream
 import java.nio.file.Path
 import java.security.DigestOutputStream
 import java.security.MessageDigest
@@ -18,13 +19,12 @@ import java.util.jar.JarInputStream
 import java.util.jar.JarOutputStream
 import java.util.zip.ZipEntry
 import kotlin.io.path.inputStream
-import kotlin.io.path.outputStream
 
 @OptIn(ExperimentalSerializationApi::class)
 @Suppress("NAME_SHADOWING")
 fun modifyServerJar(
-    inputPath: Path,
-    outputPath: Path,
+    input: Path,
+    output: OutputStream,
     mapping: Mapping,
     serverModName: String,
     visitors: Map<String, (ClassVisitor) -> ClassVisitor>,
@@ -32,7 +32,7 @@ fun modifyServerJar(
     val modifiedVersionBytes = ByteArrayOutputStream()
     val digest = MessageDigest.getInstance("SHA-256") // TODO: make hash deterministic
 
-    val (versionId, versionPath, versionEntryName) = JarFile(inputPath.toFile()).use { inputJar ->
+    val (versionId, versionPath, versionEntryName) = JarFile(input.toFile()).use { inputJar ->
         val bundlerFormat = inputJar.manifest.mainAttributes.getValue("Bundler-Format")
         if (bundlerFormat != "1.0") {
             error("Unsupported Bundler-Format: $bundlerFormat")
@@ -88,8 +88,8 @@ fun modifyServerJar(
         Triple(id, path, versionEntryName)
     }
 
-    JarInputStream(inputPath.inputStream().buffered()).use { inputJar ->
-        JarOutputStream(outputPath.outputStream().buffered()).use { outputJar ->
+    JarInputStream(input.inputStream().buffered()).use { inputJar ->
+        JarOutputStream(output).use { outputJar ->
             outputJar.putNextEntry(ZipEntry("META-INF/MANIFEST.MF"))
             inputJar.manifest.write(outputJar)
 
@@ -102,11 +102,8 @@ fun modifyServerJar(
                 outputJar.putNextEntry(entry)
                 when (entry.name) {
                     versionEntryName -> modifiedVersionBytes.writeTo(outputJar)
-
                     "META-INF/versions.list" -> outputJar.write(modifiedVersionFileEntry)
-
                     "version.json" -> Json.encodeToStream(Json.decodeFromStream<JsonElement>(inputJar), outputJar)
-
                     else -> inputJar.transferTo(outputJar)
                 }
             }
