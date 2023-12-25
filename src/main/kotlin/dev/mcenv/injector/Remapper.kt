@@ -1,4 +1,4 @@
-package injector
+package dev.mcenv.injector
 
 import org.objectweb.asm.commons.Remapper
 

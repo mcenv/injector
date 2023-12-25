@@ -1,4 +1,4 @@
-package injector
+package dev.mcenv.injector
 
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor

@@ -1,4 +1,4 @@
-package injector
+package dev.mcenv.injector
 
 internal class Mapping(
     private val classMappings: Map<String, ClassMapping>,

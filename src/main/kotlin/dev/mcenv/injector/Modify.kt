@@ -1,4 +1,4 @@
-package injector
+package dev.mcenv.injector
 
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -46,7 +46,7 @@ fun modifyServerJar(
             .use { it.readLine().split("\t") }
         val versionEntryName = "META-INF/versions/$path"
         val hierarchy = JarInputStream(inputJar.getInputStream(inputJar.getEntry(versionEntryName)))
-            .use(TypeHierarchy::fromJar)
+            .use(TypeHierarchy.Companion::fromJar)
         val remapper = Remapper(mapping, hierarchy)
 
         val injectors = HashMap(injectors).also { injectors ->

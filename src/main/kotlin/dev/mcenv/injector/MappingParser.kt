@@ -1,7 +1,7 @@
-package injector
+package dev.mcenv.injector
 
-import injector.Mapping.ClassMapping
-import injector.Mapping.MethodKey
+import dev.mcenv.injector.Mapping.ClassMapping
+import dev.mcenv.injector.Mapping.MethodKey
 import java.io.Reader
 
 internal class MappingParser private constructor() {
