@@ -1,7 +1,6 @@
 package injector
 
-// TODO: make me internal
-class Mapping(
+internal class Mapping(
     private val classMappings: Map<String, ClassMapping>,
 ) {
     fun mapClass(name: String): String? {

@@ -2,12 +2,13 @@ package injector
 
 import injector.Mapping.ClassMapping
 import injector.Mapping.MethodKey
+import java.io.Reader
 
 internal class MappingParser private constructor() {
     private lateinit var line: String
     private var cursor: Int = 0
 
-    fun parseMapping(lines: Iterator<String>): Mapping {
+    fun parseMapping(reader: Reader): Mapping {
         val classMappings = hashMapOf<String, ClassMapping>()
         lateinit var fieldNames: MutableMap<String, String>
         lateinit var methodNames: MutableMap<MethodKey, String>
@@ -30,53 +31,56 @@ internal class MappingParser private constructor() {
             methodNames[MethodKey(obfuscatedName, descriptor.toString())] = deobfuscatedName
         }
 
-        for (line in lines) {
-            this.line = line
-            cursor = 0
+        reader.useLines { lines ->
+            for (line in lines) {
+                this.line = line
+                cursor = 0
 
-            when (peek()) {
-                '#' -> continue
-                ' ' -> {
-                    skip("    ")
-                    when (peek()) {
-                        in '0'..'9' -> {
-                            read({ it == ':' })
-                            skip(":")
-                            read({ it == ':' })
-                            skip(":")
-                            val type = parseDescriptor { it == ' ' }
-                            skip(" ")
-                            val deobfuscatedName = parseWord { it == ' ' || it == '(' }
-                            if (deobfuscatedName.startsWith("lambda$")) {
-                                continue
-                            }
-                            parseMethodMapping(type, deobfuscatedName)
-                        }
-
-                        else -> {
-                            val type = parseDescriptor { it == ' ' }
-                            skip(" ")
-                            val deobfuscatedName = parseWord { it == ' ' || it == '(' }
-                            when (peek()) {
-                                ' ' -> {
-                                    skip(" -> ")
-                                    val obfuscatedName = remaining()
-                                    fieldNames[obfuscatedName] = deobfuscatedName
+                when (peek()) {
+                    '#' -> continue
+                    ' ' -> {
+                        skip("    ")
+                        when (peek()) {
+                            in '0'..'9' -> {
+                                read({ it == ':' })
+                                skip(":")
+                                read({ it == ':' })
+                                skip(":")
+                                val type = parseDescriptor { it == ' ' }
+                                skip(" ")
+                                val deobfuscatedName = parseWord { it == ' ' || it == '(' }
+                                if (deobfuscatedName.startsWith("lambda$")) {
+                                    continue
                                 }
+                                parseMethodMapping(type, deobfuscatedName)
+                            }
 
-                                '(' -> parseMethodMapping(type, deobfuscatedName)
+                            else -> {
+                                val type = parseDescriptor { it == ' ' }
+                                skip(" ")
+                                val deobfuscatedName = parseWord { it == ' ' || it == '(' }
+                                when (peek()) {
+                                    ' ' -> {
+                                        skip(" -> ")
+                                        val obfuscatedName = remaining()
+                                        fieldNames[obfuscatedName] = deobfuscatedName
+                                    }
+
+                                    '(' -> parseMethodMapping(type, deobfuscatedName)
+                                }
                             }
                         }
                     }
-                }
 
-                else -> {
-                    val deobfuscatedClassName = parseInternalName { it == ' ' }
-                    skip(" -> ")
-                    val obfuscatedClassName = parseInternalName { it == ':' }
-                    fieldNames = hashMapOf()
-                    methodNames = hashMapOf()
-                    classMappings[obfuscatedClassName] = ClassMapping(deobfuscatedClassName, fieldNames, methodNames)
+                    else -> {
+                        val deobfuscatedClassName = parseInternalName { it == ' ' }
+                        skip(" -> ")
+                        val obfuscatedClassName = parseInternalName { it == ':' }
+                        fieldNames = hashMapOf()
+                        methodNames = hashMapOf()
+                        classMappings[obfuscatedClassName] =
+                            ClassMapping(deobfuscatedClassName, fieldNames, methodNames)
+                    }
                 }
             }
         }
@@ -150,8 +154,8 @@ internal class MappingParser private constructor() {
     }
 
     companion object {
-        fun parse(lines: Iterator<String>): Mapping {
-            return MappingParser().parseMapping(lines)
+        fun parse(reader: Reader): Mapping {
+            return MappingParser().parseMapping(reader)
         }
     }
 }

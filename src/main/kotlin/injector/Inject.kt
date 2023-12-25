@@ -10,7 +10,9 @@ import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.commons.ClassRemapper
 import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.io.OutputStream
+import java.io.Reader
 import java.nio.file.Path
 import java.security.DigestOutputStream
 import java.security.MessageDigest
@@ -20,17 +22,16 @@ import java.util.jar.JarOutputStream
 import java.util.zip.ZipEntry
 import kotlin.io.path.inputStream
 
-@OptIn(ExperimentalSerializationApi::class)
 @Suppress("NAME_SHADOWING")
-fun modifyServerJar(
+fun injectServerJar(
     input: Path,
     output: OutputStream,
-    mapping: Mapping,
+    mapping: Reader,
     serverModName: String,
-    visitors: Map<String, (ClassVisitor) -> ClassVisitor>,
+    injectors: Map<String, (ClassVisitor) -> ClassVisitor>,
 ) {
     val modifiedVersionBytes = ByteArrayOutputStream()
-    val digest = MessageDigest.getInstance("SHA-256") // TODO: make hash deterministic
+    val digest = MessageDigest.getInstance("SHA-256") // TODO: make hash deterministic?
 
     val (versionId, versionPath, versionEntryName) = JarFile(input.toFile()).use { inputJar ->
         val bundlerFormat = inputJar.manifest.mainAttributes.getValue("Bundler-Format")
@@ -38,6 +39,7 @@ fun modifyServerJar(
             error("Unsupported Bundler-Format: $bundlerFormat")
         }
 
+        val mapping = MappingParser.parse(mapping)
         val (_, id, path) = inputJar
             .getInputStream(inputJar.getEntry("META-INF/versions.list"))
             .bufferedReader()
@@ -46,9 +48,12 @@ fun modifyServerJar(
         val hierarchy = JarInputStream(inputJar.getInputStream(inputJar.getEntry(versionEntryName)))
             .use(TypeHierarchy::fromJar)
         val remapper = Remapper(mapping, hierarchy)
-        val visitors = HashMap(visitors).also { visitors ->
-            // TODO: don't overwrite existing visitor
-            visitors[ServerModNameModifier.CLASS] = { ServerModNameModifier(serverModName, it) }
+
+        val injectors = HashMap(injectors).also { injectors ->
+            when (val injector = injectors[ServerModNameModifier.CLASS]) {
+                null -> injectors[ServerModNameModifier.CLASS] = { ServerModNameModifier(serverModName, it) }
+                else -> injectors[ServerModNameModifier.CLASS] = { ServerModNameModifier(serverModName, injector(it)) }
+            }
         }
 
         JarOutputStream(DigestOutputStream(modifiedVersionBytes, digest)).use { outputJar ->
@@ -61,8 +66,7 @@ fun modifyServerJar(
 
                         entryName.endsWith(".json") || entryName.endsWith(".mcmeta") -> {
                             outputJar.putNextEntry(entry)
-                            val element: JsonElement = Json.decodeFromStream(inputJar)
-                            Json.encodeToStream(element, outputJar)
+                            minifyJson(inputJar, outputJar)
                         }
 
                         entryName.endsWith(".class") -> {
@@ -71,7 +75,7 @@ fun modifyServerJar(
                             outputJar.putNextEntry(if (deobfuscatedName == obfuscatedName) entry else ZipEntry("$deobfuscatedName.class"))
 
                             val writer = ClassWriter(0)
-                            val visitor = visitors[deobfuscatedName]?.invoke(writer) ?: writer
+                            val visitor = injectors[deobfuscatedName]?.invoke(writer) ?: writer
                             ClassReader(inputJar).accept(ClassRemapper(visitor, remapper), ClassReader.EXPAND_FRAMES)
                             outputJar.write(writer.toByteArray())
                         }
@@ -103,10 +107,15 @@ fun modifyServerJar(
                 when (entry.name) {
                     versionEntryName -> modifiedVersionBytes.writeTo(outputJar)
                     "META-INF/versions.list" -> outputJar.write(modifiedVersionFileEntry)
-                    "version.json" -> Json.encodeToStream(Json.decodeFromStream<JsonElement>(inputJar), outputJar)
+                    "version.json" -> minifyJson(inputJar, outputJar)
                     else -> inputJar.transferTo(outputJar)
                 }
             }
         }
     }
+}
+
+@OptIn(ExperimentalSerializationApi::class)
+private fun minifyJson(input: InputStream, output: OutputStream) {
+    Json.encodeToStream(Json.decodeFromStream<JsonElement>(input), output)
 }
