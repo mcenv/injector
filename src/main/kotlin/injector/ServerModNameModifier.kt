@@ -2,7 +2,6 @@ package injector
 
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.MethodVisitor
-import org.objectweb.asm.Opcodes.ARETURN
 import org.objectweb.asm.Opcodes.ASM9
 import org.objectweb.asm.Type
 
@@ -20,9 +19,8 @@ internal class ServerModNameModifier(
         val parent = super.visitMethod(access, name, descriptor, signature, exceptions)
         return if (name == "getServerModName" && descriptor == getServerModName) {
             object : MethodVisitor(ASM9, parent) {
-                override fun visitCode() {
-                    visitLdcInsn(serverModName)
-                    visitInsn(ARETURN)
+                override fun visitLdcInsn(value: Any?) {
+                    super.visitLdcInsn(serverModName)
                 }
             }
         } else {

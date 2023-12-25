@@ -71,7 +71,7 @@ fun modifyServerJar(
                             outputJar.putNextEntry(if (deobfuscatedName == obfuscatedName) entry else ZipEntry("$deobfuscatedName.class"))
 
                             val writer = ClassWriter(0)
-                            val visitor = /* visitors[deobfuscatedName]?.invoke(writer) ?: */ writer
+                            val visitor = visitors[deobfuscatedName]?.invoke(writer) ?: writer
                             ClassReader(inputJar).accept(ClassRemapper(visitor, remapper), ClassReader.EXPAND_FRAMES)
                             outputJar.write(writer.toByteArray())
                         }
