@@ -1,8 +1,10 @@
 plugins {
     kotlin("jvm") version "1.9.22"
     kotlin("plugin.serialization") version "1.9.22"
+    id("maven-publish")
 }
 
+group = "dev.mcenv"
 version = "0.0.0"
 
 repositories {
@@ -22,4 +24,22 @@ kotlin {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/mcenv/injector")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+    publications {
+        register<MavenPublication>("gpr") {
+            from(components["kotlin"])
+        }
+    }
 }
