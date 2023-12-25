@@ -23,7 +23,7 @@ import java.util.zip.ZipEntry
 import kotlin.io.path.inputStream
 
 @Suppress("NAME_SHADOWING")
-fun injectServerJar(
+fun modifyServerJar(
     input: Path,
     output: OutputStream,
     mapping: Reader,
