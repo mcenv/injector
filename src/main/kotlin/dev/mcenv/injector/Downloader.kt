@@ -12,10 +12,8 @@ import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import java.io.ByteArrayOutputStream
-import java.io.InputStream
 import java.net.URI
 import java.net.URL
-import java.security.DigestInputStream
 import java.security.MessageDigest
 
 private val versionManifestUrl: URL = urlOf("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json")
@@ -54,35 +52,17 @@ private fun download(id: String, download: Package.Downloads.Download): ByteArra
 }
 
 @Suppress("NOTHING_TO_INLINE")
-inline fun urlOf(string: String): URL {
+private inline fun urlOf(string: String): URL {
     return URI(string).toURL()
 }
 
-@OptIn(ExperimentalStdlibApi::class)
-inline fun <T> InputStream.useWithDigest(
-    digest: MessageDigest,
-    expectedHash: String,
-    block: (input: InputStream) -> T,
-): T? {
-    return DigestInputStream(this, digest).use { input ->
-        val result = block(input)
-        val actualHash = digest.digest().joinToString("") { it.toHexString() }
-        digest.reset()
-        if (expectedHash == actualHash) {
-            result
-        } else {
-            null
-        }
-    }
-}
-
-class Downloads(
+internal class Downloads(
     val server: ByteArray,
     val serverMappings: ByteArray,
 )
 
 @Serializable
-data class Package(
+internal data class Package(
     val downloads: Downloads,
 ) {
     @Serializable
@@ -100,7 +80,7 @@ data class Package(
 }
 
 @Serializable
-data class VersionManifest(
+internal data class VersionManifest(
     val latest: Latest,
     val versions: List<Version>,
 ) {
@@ -118,7 +98,7 @@ data class VersionManifest(
     )
 }
 
-object URLSerializer : KSerializer<URL> {
+private object URLSerializer : KSerializer<URL> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("URL", PrimitiveKind.STRING)
 
     override fun serialize(encoder: Encoder, value: URL) {

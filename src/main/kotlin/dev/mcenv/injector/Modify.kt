@@ -22,12 +22,10 @@ import java.util.jar.JarOutputStream
 import java.util.zip.ZipEntry
 import kotlin.io.path.inputStream
 
-@Suppress("NAME_SHADOWING")
 fun modifyServerJar(
     input: Path,
     output: OutputStream,
     mapping: Reader,
-    serverModName: String,
     injectors: Map<String, (ClassVisitor) -> ClassVisitor>,
 ) {
     val modifiedVersionBytes = ByteArrayOutputStream()
@@ -39,6 +37,7 @@ fun modifyServerJar(
             error("Unsupported Bundler-Format: $bundlerFormat")
         }
 
+        @Suppress("NAME_SHADOWING")
         val mapping = MappingParser.parse(mapping)
         val (_, id, path) = inputJar
             .getInputStream(inputJar.getEntry("META-INF/versions.list"))
@@ -48,13 +47,6 @@ fun modifyServerJar(
         val hierarchy = JarInputStream(inputJar.getInputStream(inputJar.getEntry(versionEntryName)))
             .use(TypeHierarchy.Companion::fromJar)
         val remapper = Remapper(mapping, hierarchy)
-
-        val injectors = HashMap(injectors).also { injectors ->
-            when (val injector = injectors[ServerModNameModifier.CLASS]) {
-                null -> injectors[ServerModNameModifier.CLASS] = { ServerModNameModifier(serverModName, it) }
-                else -> injectors[ServerModNameModifier.CLASS] = { ServerModNameModifier(serverModName, injector(it)) }
-            }
-        }
 
         JarOutputStream(DigestOutputStream(modifiedVersionBytes, digest)).use { outputJar ->
             JarInputStream(inputJar.getInputStream(inputJar.getEntry(versionEntryName))).use { inputJar ->
@@ -97,9 +89,8 @@ fun modifyServerJar(
             outputJar.putNextEntry(ZipEntry("META-INF/MANIFEST.MF"))
             inputJar.manifest.write(outputJar)
 
-            val modifiedVersionFileEntry = "${
-                digest.digest().joinToString("") { "%02x".format(it) }
-            }\t$versionId\t$versionPath".encodeToByteArray()
+            val modifiedVersionFileEntry =
+                "${digest.digest().toHashString()}\t$versionId\t$versionPath".encodeToByteArray()
 
             while (true) {
                 val entry = inputJar.nextEntry ?: break
