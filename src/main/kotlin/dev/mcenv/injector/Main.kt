@@ -20,7 +20,7 @@ import java.util.zip.ZipEntry
 
 fun OutputStream.writeModifiedServer(
     id: String,
-    injectors: Map<String, (ClassVisitor) -> ClassVisitor>,
+    injectors: Map<String, (ClassVisitor) -> ClassVisitor> = emptyMap(),
 ) {
     val `package` = getPackage(id)
     val bundlerBytes = download(`package`.downloads.server)
