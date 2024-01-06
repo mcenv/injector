@@ -1,14 +1,14 @@
 package dev.mcenv.injector
 
-import dev.mcenv.injector.Mapping.ClassMapping
-import dev.mcenv.injector.Mapping.MethodKey
+import dev.mcenv.injector.Mappings.ClassMapping
+import dev.mcenv.injector.Mappings.MethodKey
 import java.io.Reader
 
-internal class MappingParser private constructor() {
+internal class MappingsParser private constructor() {
     private lateinit var line: String
     private var cursor: Int = 0
 
-    fun parseMapping(reader: Reader): Mapping {
+    fun parseMappings(reader: Reader): Mappings {
         val classMappings = hashMapOf<String, ClassMapping>()
         lateinit var fieldNames: MutableMap<String, String>
         lateinit var methodNames: MutableMap<MethodKey, String>
@@ -85,7 +85,7 @@ internal class MappingParser private constructor() {
             }
         }
 
-        return Mapping(classMappings)
+        return Mappings(classMappings)
     }
 
     private inline fun parseInternalName(predicate: (Char) -> Boolean): String {
@@ -154,8 +154,8 @@ internal class MappingParser private constructor() {
     }
 
     companion object {
-        fun parse(reader: Reader): Mapping {
-            return MappingParser().parseMapping(reader)
+        fun parse(reader: Reader): Mappings {
+            return MappingsParser().parseMappings(reader)
         }
     }
 }

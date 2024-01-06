@@ -14,26 +14,26 @@ import kotlinx.serialization.json.decodeFromStream
 import java.io.ByteArrayOutputStream
 import java.net.URI
 import java.net.URL
-import java.security.MessageDigest
 
 private val versionManifestUrl: URL = urlOf("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json")
-private val digest: MessageDigest = MessageDigest.getInstance("SHA-1")
 private val json: Json = Json { ignoreUnknownKeys = true }
 
-internal fun getDownloads(id: String): Downloads {
-    val `package` = getPackage(id)
-    val server = download(id, `package`.downloads.server)
-    val serverMappings = download(id, `package`.downloads.serverMappings)
-    return Downloads(server, serverMappings)
-}
-
 @OptIn(ExperimentalSerializationApi::class)
-private fun getPackage(id: String): Package {
+internal fun getPackage(id: String): Package {
     val manifest = getVersionManifest()
     val version = manifest.versions.firstOrNull { it.id == id }
-        ?: throw IllegalArgumentException("Version $id not found")
-    return version.url.openStream().useWithDigest(digest, version.sha1, json::decodeFromStream)
-        ?: throw IllegalStateException("Version $id failed verification")
+        ?: error("Not found: $id ")
+    return version.url.openStream().useWithDigest(sha1Digest, version.sha1, json::decodeFromStream)
+        ?: error("Failed verification: $id")
+}
+
+internal fun download(download: Package.Downloads.Download): ByteArray {
+    val bytes = ByteArrayOutputStream()
+    download.url.openStream()
+        .useWithDigest(sha1Digest, download.sha1) { it.transferTo(bytes) }
+        ?.takeIf { bytes.size().toLong() == download.size }
+        ?: error("Failed verification: ${download.url}")
+    return bytes.toByteArray()
 }
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -41,25 +41,10 @@ private fun getVersionManifest(): VersionManifest {
     return versionManifestUrl.openStream().use(json::decodeFromStream)
 }
 
-private fun download(id: String, download: Package.Downloads.Download): ByteArray {
-    val output = ByteArrayOutputStream()
-    download.url.openStream().useWithDigest(digest, download.sha1) { it.transferTo(output) }
-        ?: throw IllegalStateException("Version $id failed verification")
-    if (output.size().toLong() != download.size) {
-        throw IllegalStateException("Version $id failed verification")
-    }
-    return output.toByteArray()
-}
-
 @Suppress("NOTHING_TO_INLINE")
 private inline fun urlOf(string: String): URL {
     return URI(string).toURL()
 }
-
-internal class Downloads(
-    val server: ByteArray,
-    val serverMappings: ByteArray,
-)
 
 @Serializable
 internal data class Package(

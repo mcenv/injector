@@ -4,6 +4,8 @@ import java.io.InputStream
 import java.security.DigestInputStream
 import java.security.MessageDigest
 
+internal val sha1Digest: MessageDigest = MessageDigest.getInstance("SHA-1")
+
 internal inline fun <T> InputStream.useWithDigest(
     digest: MessageDigest,
     expectedHash: String,

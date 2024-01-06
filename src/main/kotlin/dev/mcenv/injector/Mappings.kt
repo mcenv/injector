@@ -1,6 +1,6 @@
 package dev.mcenv.injector
 
-internal class Mapping(
+internal class Mappings(
     private val classMappings: Map<String, ClassMapping>,
 ) {
     fun mapClass(name: String): String? {
