@@ -18,9 +18,8 @@ import java.util.jar.JarInputStream
 import java.util.jar.JarOutputStream
 import java.util.zip.ZipEntry
 
-fun writeModifiedServer(
+fun OutputStream.writeModifiedServer(
     id: String,
-    output: OutputStream,
     injectors: Map<String, (ClassVisitor) -> ClassVisitor>,
 ) {
     val `package` = getPackage(id)
@@ -87,7 +86,7 @@ fun writeModifiedServer(
     }
 
     JarInputStream(ByteArrayInputStream(bundlerBytes)).use { inputJar ->
-        JarOutputStream(output).use { outputJar ->
+        JarOutputStream(this).let { outputJar ->
             outputJar.putNextEntry(ZipEntry("META-INF/MANIFEST.MF"))
             inputJar.manifest.write(outputJar)
 
