@@ -18,10 +18,10 @@ import java.util.jar.JarInputStream
 import java.util.jar.JarOutputStream
 import java.util.zip.ZipEntry
 
-fun OutputStream.writeModifiedServer(
+fun OutputStream.injected(
     id: String,
     injectors: Map<String, (ClassVisitor) -> ClassVisitor> = emptyMap(),
-) {
+): OutputStream {
     val `package` = getPackage(id)
     val bundlerBytes = download(`package`.downloads.server)
     val versionEntryName = "META-INF/versions/$id/server-$id.jar"
@@ -85,8 +85,8 @@ fun OutputStream.writeModifiedServer(
         }
     }
 
-    JarInputStream(ByteArrayInputStream(bundlerBytes)).use { inputJar ->
-        JarOutputStream(this).let { outputJar ->
+    return JarOutputStream(this).also { outputJar ->
+        JarInputStream(ByteArrayInputStream(bundlerBytes)).use { inputJar ->
             outputJar.putNextEntry(ZipEntry("META-INF/MANIFEST.MF"))
             inputJar.manifest.write(outputJar)
 
