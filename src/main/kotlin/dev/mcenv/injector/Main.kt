@@ -9,7 +9,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.json.encodeToStream
 import org.objectweb.asm.ClassReader
-import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.commons.ClassRemapper
 import java.io.ByteArrayInputStream
@@ -21,10 +20,7 @@ import java.util.jar.JarInputStream
 import java.util.jar.JarOutputStream
 import java.util.zip.ZipEntry
 
-fun OutputStream.injected(
-    id: String,
-    injectors: Map<String, (ClassVisitor) -> ClassVisitor> = emptyMap(),
-): OutputStream {
+fun OutputStream.injected(id: String, injectors: List<Injector>): OutputStream {
     val `package` = getPackage(id)
     val bundlerBytes = download(`package`.downloads.server)
     val versionEntryName = "META-INF/versions/$id/server-$id.jar"
@@ -53,6 +49,7 @@ fun OutputStream.injected(
     val hierarchy = JarInputStream(ByteArrayInputStream(versionBytes)).use(TypeHierarchy::fromJar)
     val remapper = Remapper(mappings, hierarchy)
     val modifiedVersionBytes = ByteArrayOutputStream()
+    val injectorsMap = injectors.associateBy { it.className }
 
     JarInputStream(ByteArrayInputStream(versionBytes)).use { inputJar ->
         JarOutputStream(DigestOutputStream(modifiedVersionBytes, sha1Digest)).use { outputJar ->
@@ -74,7 +71,7 @@ fun OutputStream.injected(
 
                         // TODO: make hash deterministic?
                         val writer = ClassWriter(0)
-                        val visitor = injectors[deobfuscatedName]?.invoke(writer) ?: writer
+                        val visitor = injectorsMap[deobfuscatedName]?.inject(writer) ?: writer
                         ClassReader(inputJar).accept(ClassRemapper(visitor, remapper), ClassReader.EXPAND_FRAMES)
                         outputJar.write(writer.toByteArray())
                     }
