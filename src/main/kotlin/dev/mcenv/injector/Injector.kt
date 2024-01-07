@@ -77,7 +77,7 @@ fun OutputStream.inject(id: String, injectors: List<Injector> = emptyList()) {
                         outputJar.putNextEntry(if (deobfuscatedName == obfuscatedName) entry else ZipEntry("$deobfuscatedName.class"))
 
                         // TODO: make hash deterministic?
-                        val writer = ClassWriter(0)
+                        val writer = ClassWriter(ClassWriter.COMPUTE_MAXS or ClassWriter.COMPUTE_FRAMES)
                         val visitor = injectorsMap[deobfuscatedName]?.inject(writer) ?: writer
                         ClassReader(inputJar).accept(ClassRemapper(visitor, remapper), ClassReader.EXPAND_FRAMES)
                         outputJar.write(writer.toByteArray())
