@@ -1,5 +1,8 @@
 package dev.mcenv.injector
 
+import dev.mcenv.injector.internal.*
+import dev.mcenv.injector.internal.MappingsParser
+import dev.mcenv.injector.internal.TypeHierarchy
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement

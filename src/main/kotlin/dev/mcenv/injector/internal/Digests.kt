@@ -1,4 +1,4 @@
-package dev.mcenv.injector
+package dev.mcenv.injector.internal
 
 import java.io.InputStream
 import java.security.DigestInputStream

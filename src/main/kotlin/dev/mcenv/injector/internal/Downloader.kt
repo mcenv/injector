@@ -1,4 +1,4 @@
-package dev.mcenv.injector
+package dev.mcenv.injector.internal
 
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
